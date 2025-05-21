@@ -1,7 +1,11 @@
-def main():
-    print("Hello from mahjong!")
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
+"""
+麻将游戏主入口脚本
+"""
+
+from game import main
 
 if __name__ == "__main__":
-    import mahjong_game
-    mahjong_game.MahjongGamePygame().run()
+    main()
