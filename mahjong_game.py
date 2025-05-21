@@ -98,6 +98,10 @@ class MahjongGamePygame:
         self.deal_tiles()
         self.running = True
         self.info_msg = ''
+        # 初始化吃牌相关的状态
+        self.chi_mode = False
+        self.chi_selected = []  # 存储用户选择的要吃牌的两张手牌
+        self.chi_groups = []  # 存储已经吃的牌组
 
     def deal_tiles(self):
         for _ in range(13):
@@ -113,24 +117,44 @@ class MahjongGamePygame:
             x = 60 + idx * (TILE_WIDTH + TILE_GAP)
             y = SCREEN_HEIGHT - TILE_HEIGHT - 40
             rect = pygame.Rect(x, y, TILE_WIDTH, TILE_HEIGHT)
-            color = BLUE if self.selected_tile == idx else WHITE
+            color = BLUE if (self.selected_tile == idx or 
+                           (self.chi_mode and tile in self.chi_selected)) else WHITE
             pygame.draw.rect(self.screen, color, rect)
             pygame.draw.rect(self.screen, BLACK, rect, 2)
             text = FONT.render(tile, True, BLACK)
-            text_rect = text.get_rect(center=(x + TILE_WIDTH/2, y + TILE_HEIGHT/2))  # 居中显示文字
+            text_rect = text.get_rect(center=(x + TILE_WIDTH/2, y + TILE_HEIGHT/2))
             self.screen.blit(text, text_rect)
+            
+        # 显示吃的组合
+        start_x = SCREEN_WIDTH - 250
+        start_y = SCREEN_HEIGHT - TILE_HEIGHT - 40
+        for group_idx, chi_group in enumerate(self.chi_groups):
+            for tile_idx, tile in enumerate(chi_group):
+                x = start_x + tile_idx * (TILE_WIDTH + 5)
+                y = start_y - group_idx * (TILE_HEIGHT + 5)
+                rect = pygame.Rect(x, y, TILE_WIDTH, TILE_HEIGHT)
+                pygame.draw.rect(self.screen, WHITE, rect)
+                pygame.draw.rect(self.screen, BLACK, rect, 2)
+                text = FONT.render(tile, True, BLACK)
+                text_rect = text.get_rect(center=(x + TILE_WIDTH/2, y + TILE_HEIGHT/2))
+                self.screen.blit(text, text_rect)
+
         # 操作按钮
         btns = ['摸牌', '出牌', '吃', '碰', '杠', '胡', '重开']
         self.btn_rects = []
         for i, label in enumerate(btns):
             bx = 60 + i * 90
-            by = SCREEN_HEIGHT - 220  # 将按钮移到更高的位置，在弃牌区和手牌区之间
+            by = SCREEN_HEIGHT - 220
             rect = pygame.Rect(bx, by, 80, 30)
             # 设置按钮颜色
             if label == '出牌' and self.selected_tile is not None and len(self.hands[0]) > 13:
                 btn_color = (150, 255, 150)  # 浅绿色表示可以出牌
-            elif label == '摸牌' and self.tiles and len(self.hands[0]) <= 13:  # 如果还有牌可以摸且手牌数量不超过13
+            elif label == '摸牌' and self.tiles and len(self.hands[0]) <= 13:
                 btn_color = (150, 255, 150)  # 浅绿色表示可以摸牌
+            elif label == '吃' and self.can_chi():
+                btn_color = (150, 255, 150)  # 浅绿色表示可以吃牌
+            elif label == '吃' and self.chi_mode:
+                btn_color = (255, 255, 150)  # 黄色表示正在吃牌模式
             else:
                 btn_color = GRAY
             pygame.draw.rect(self.screen, btn_color, rect)
@@ -138,6 +162,7 @@ class MahjongGamePygame:
             t = SMALL_FONT.render(label, True, BLACK)
             self.screen.blit(t, (bx+20, by+5))
             self.btn_rects.append((rect, label))
+
         # 用户弃牌
         self.screen.blit(SMALL_FONT.render('你的弃牌:', True, BLACK), (60, SCREEN_HEIGHT-180))
         for idx, tile in enumerate(self.discards[0]):
@@ -183,8 +208,20 @@ class MahjongGamePygame:
             y = SCREEN_HEIGHT - TILE_HEIGHT - 40
             rect = pygame.Rect(x, y, TILE_WIDTH, TILE_HEIGHT)
             if rect.collidepoint(pos):
-                self.selected_tile = idx
+                if self.chi_mode:
+                    # 在吃牌模式下，选择要吃的牌
+                    if tile in self.chi_selected:
+                        self.chi_selected.remove(tile)
+                        self.info_msg = "取消选择了一张牌"
+                    elif len(self.chi_selected) < 2:
+                        self.chi_selected.append(tile)
+                        self.info_msg = f"选择了{len(self.chi_selected)}张牌"
+                        if len(self.chi_selected) == 2:
+                            self.complete_chi()
+                else:
+                    self.selected_tile = idx
                 return
+
         # 操作按钮
         for rect, label in self.btn_rects:
             if rect.collidepoint(pos):
@@ -193,7 +230,15 @@ class MahjongGamePygame:
                 elif label == '出牌':
                     self.play_tile()
                 elif label == '吃':
-                    self.info_msg = '暂未实现吃的判定逻辑'
+                    if not self.chi_mode:
+                        if self.can_chi():
+                            self.handle_chi()
+                        else:
+                            self.info_msg = "当前无法吃牌"
+                    else:
+                        self.chi_mode = False
+                        self.chi_selected = []
+                        self.info_msg = "取消吃牌"
                 elif label == '碰':
                     self.info_msg = '暂未实现碰的判定逻辑'
                 elif label == '杠':
@@ -204,10 +249,20 @@ class MahjongGamePygame:
                     self.reset_game()
                 return
 
+    def get_total_hand_count(self, player_index):
+        """计算玩家的总手牌数量，包括手牌和吃碰的牌"""
+        total = len(self.hands[player_index])
+        if player_index == 0:  # 只计算玩家的吃碰牌
+            # 每个吃或碰组合都是3张牌
+            total += len(self.chi_groups) * 3
+            # TODO: 在后续实现碰牌时，也要计算碰牌的数量
+        return total
+
     def draw_tile(self):
         """摸牌操作"""
-        if len(self.hands[0]) >= 14:
-            self.info_msg = '你已经有14张牌了，不能再摸牌'
+        total_cards = self.get_total_hand_count(0)
+        if total_cards >= 14:
+            self.info_msg = '你已经有14张牌了（包括吃碰的牌），不能再摸牌'
             return
         if self.tiles:
             self.hands[0].append(self.tiles.pop())
@@ -221,8 +276,9 @@ class MahjongGamePygame:
             self.info_msg = '请先选择要打出的牌'
             return
             
-        if len(self.hands[0]) <= 13:
-            self.info_msg = '你现在只有13张牌，需要先摸牌'
+        total_cards = self.get_total_hand_count(0)
+        if total_cards <= 13:
+            self.info_msg = '你现在只有13张牌（包括吃碰的牌），需要先摸牌'
             return
             
         hand = sorted(self.hands[0])
@@ -266,7 +322,144 @@ class MahjongGamePygame:
         self.discards[idx].append(tile)
         self.info_msg = f'电脑{idx}打出了 {tile}'
 
+    def can_chi(self):
+        """检查是否可以吃牌"""
+        if not self.discards or not self.discards[1]:  # 如果没有电脑玩家的弃牌，不能吃
+            return False
+        last_discard = self.discards[1][-1]  # 获取电脑玩家最后打出的牌
+        
+        # 只有数字牌可以吃，字牌不能吃
+        if any(h == last_discard for h in HONORS):
+            return False
+            
+        # 解析最后一张弃牌的数字和花色
+        try:
+            rank = int(last_discard[0])
+            suit = last_discard[1]
+        except (ValueError, IndexError):
+            return False
+        
+        # 获取玩家手牌中同花色的牌
+        try:
+            hand_tiles = sorted([t for t in self.hands[0] if len(t) > 1 and t[1] == suit])
+            if not hand_tiles:
+                return False
+        except (ValueError, IndexError):
+            return False
+            
+        # 检查是否有连续的牌可以吃
+        hand_ranks = [int(t[0]) for t in hand_tiles]
+        # 检查三种吃牌方式：
+        # 1. X-1,X,X+1
+        # 2. X-2,X-1,X
+        # 3. X,X+1,X+2
+        target_combinations = [
+            [rank-1, rank+1],  # 中间吃
+            [rank-2, rank-1],  # 后面吃
+            [rank+1, rank+2]   # 前面吃
+        ]
+        
+        for combo in target_combinations:
+            if all(r in hand_ranks for r in combo):
+                return True
+        return False
+        
+    def get_chi_combinations(self):
+        """获取所有可能的吃牌组合"""
+        if not self.discards or not self.discards[1]:
+            return []
+            
+        last_discard = self.discards[1][-1]
+        try:
+            rank = int(last_discard[0])
+            suit = last_discard[1]
+        except (ValueError, IndexError):
+            return []
+        
+        try:
+            hand_tiles = [t for t in self.hands[0] if len(t) > 1 and t[1] == suit]
+            hand_ranks = [int(t[0]) for t in hand_tiles]
+        except (ValueError, IndexError):
+            return []
+        
+        combinations = []
+        
+        # 检查三种吃牌方式
+        if rank-1 in hand_ranks and rank+1 in hand_ranks:  # 中间吃
+            combinations.append([f"{rank-1}{suit}", f"{rank+1}{suit}"])
+        if rank-2 in hand_ranks and rank-1 in hand_ranks:  # 后面吃
+            combinations.append([f"{rank-2}{suit}", f"{rank-1}{suit}"])
+        if rank+1 in hand_ranks and rank+2 in hand_ranks:  # 前面吃
+            combinations.append([f"{rank+1}{suit}", f"{rank+2}{suit}"])
+            
+        return combinations
+
+    def handle_chi(self):
+        """处理吃牌操作"""
+        if not self.can_chi():
+            self.info_msg = "现在不能吃牌"
+            return
+            
+        # 获取所有可能的吃牌组合
+        combinations = self.get_chi_combinations()
+        if not combinations:
+            self.info_msg = "没有可以吃的组合"
+            return
+            
+        if not self.chi_mode:
+            self.chi_mode = True
+            self.chi_selected = []
+            self.info_msg = "请选择要用来吃牌的两张牌"
+        else:
+            self.chi_mode = False
+            self.chi_selected = []
+            self.info_msg = "取消吃牌"
+            
+    def complete_chi(self):
+        """完成吃牌操作"""
+        if len(self.chi_selected) != 2:
+            return
+            
+        if not self.discards or not self.discards[1]:
+            self.info_msg = "没有可以吃的牌"
+            self.chi_mode = False
+            self.chi_selected = []
+            return
+            
+        last_discard = self.discards[1][-1]
+        chi_tiles = self.chi_selected + [last_discard]
+        
+        # 对牌组进行排序（按数字排序）
+        chi_tiles.sort(key=lambda x: int(x[0]))
+        
+        # 验证是否是有效的吃牌组合
+        ranks = [int(t[0]) for t in chi_tiles]
+        suits = [t[1] for t in chi_tiles]
+        
+        if not (all(s == suits[0] for s in suits) and  # 检查花色相同
+                max(ranks) - min(ranks) == 2 and       # 检查是否连续
+                len(set(ranks)) == 3):                 # 检查是否有重复
+            self.info_msg = "选择的牌不符合吃牌规则"
+            self.chi_mode = False
+            self.chi_selected = []
+            return
+            
+        # 从手牌中移除选择的牌
+        for tile in self.chi_selected:
+            self.hands[0].remove(tile)
+            
+        # 从弃牌堆中移除被吃的牌
+        self.discards[1].pop()
+        
+        # 添加到吃牌组合中
+        self.chi_groups.append(chi_tiles)
+        
+        self.chi_mode = False
+        self.chi_selected = []
+        self.info_msg = f"吃牌成功：{''.join(chi_tiles)}"
+
     def run(self):
+        """游戏主循环"""
         while self.running:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
