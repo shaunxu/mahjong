@@ -126,7 +126,12 @@ class MahjongGamePygame:
             bx = 60 + i * 90
             by = SCREEN_HEIGHT - 220  # 将按钮移到更高的位置，在弃牌区和手牌区之间
             rect = pygame.Rect(bx, by, 80, 30)
-            pygame.draw.rect(self.screen, GRAY, rect)
+            # 如果是出牌按钮，根据是否选中牌来决定颜色
+            if label == '出牌' and self.selected_tile is not None:
+                btn_color = (150, 255, 150)  # 浅绿色表示可以出牌
+            else:
+                btn_color = GRAY
+            pygame.draw.rect(self.screen, btn_color, rect)
             pygame.draw.rect(self.screen, BLACK, rect, 2)
             t = SMALL_FONT.render(label, True, BLACK)
             self.screen.blit(t, (bx+20, by+5))
@@ -158,6 +163,12 @@ class MahjongGamePygame:
         if self.info_msg:
             info = SMALL_FONT.render(self.info_msg, True, (200,0,0))
             self.screen.blit(info, (60, 30))
+        # 显示当前选中的牌
+        if self.selected_tile is not None:
+            hand = sorted(self.hands[0])
+            selected_info = f"当前选中: {hand[self.selected_tile]}"
+            selected_text = SMALL_FONT.render(selected_info, True, BLUE)
+            self.screen.blit(selected_text, (60, 60))
         pygame.display.flip()
 
     def handle_mouse(self, pos):
@@ -189,23 +200,40 @@ class MahjongGamePygame:
 
     def play_tile(self):
         if self.selected_tile is None:
-            self.info_msg = '请选择要出的牌'
+            self.info_msg = '请先选择要出的牌'
             return
+            
         hand = sorted(self.hands[0])
         tile = hand[self.selected_tile]
-        self.hands[0].remove(tile)
+        
+        # 从手牌中移除选中的牌
+        for t in self.hands[0]:
+            if t == tile:
+                self.hands[0].remove(t)
+                break
+                
+        # 添加到弃牌区
         self.discards[0].append(tile)
         self.selected_tile = None
-        self.info_msg = ''
+        self.info_msg = f'你打出了 {tile}，其他玩家可以吃碰杠胡'
+        
+        # TODO: 这里应该等待其他玩家是否要吃碰杠胡
+        # 暂时只是简单地传递回合
         self.next_turn()
 
     def next_turn(self):
         # 电脑家操作（空实现）
         for i in range(1, 4):
+            # 先判断是否可以吃碰杠胡（暂未实现）
+            # 如果不能吃碰杠胡，则摸牌出牌
+            if self.tiles:
+                self.hands[i].append(self.tiles.pop())
             self.computer_action(i)
-        # 用户摸牌
+            
+        # 用户回合开始时摸牌
         if self.tiles:
             self.hands[0].append(self.tiles.pop())
+            self.info_msg = '轮到你的回合'
 
     def computer_action(self, idx):
         pass
