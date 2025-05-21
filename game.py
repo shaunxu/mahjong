@@ -283,12 +283,34 @@ def main():
     import json
     
     game = MahjongGame()
-    
+
+    # 东风玩家先摸牌
     while True:
-        # 显示游戏状态和可用指令
-        game.display_game_status()
-        
-        # 等待玩家输入指令
+        current_player = game.players[game.current_player_index]
+        # 摸牌
+        tile = game.draw_tile()
+        if tile:
+            current_player.add_tile(tile)
+            current_player.sort_hand()
+            print(f"{current_player.name} 摸到了 {str(tile)}")
+        else:
+            print(json.dumps({"error": "牌堆已空"}, ensure_ascii=False))
+            break
+
+        # 如果是电脑，直接打出刚摸到的牌
+        if not current_player.is_human:
+            # 默认打出刚摸到的最后一张
+            discarded_tile = game.discard_tile(current_player, len(current_player.hand) - 1)
+            print(f"{current_player.name} 打出了 {str(discarded_tile)}")
+            game.display_game_status()
+            # 电脑出牌后暂停，等待玩家输入
+            break
+        else:
+            game.display_game_status()
+            break
+
+    # 用户输入循环
+    while True:
         try:
             command = input()
             command_data = json.loads(command)
@@ -298,9 +320,29 @@ def main():
             print(json.dumps(result, ensure_ascii=False))
             
             if result.get("success"):
-                # 如果指令执行成功，更新并显示游戏状态
                 game.display_game_status()
-                
+                # 如果玩家输入"过"，则继续让下一个电脑自动出牌
+                if command_data.get("command") == "pass":
+                    game.current_player_index = (game.current_player_index + 1) % 4
+                    while True:
+                        current_player = game.players[game.current_player_index]
+                        if not current_player.is_human:
+                            tile = game.draw_tile()
+                            if tile:
+                                current_player.add_tile(tile)
+                                current_player.sort_hand()
+                                print(f"{current_player.name} 摸到了 {str(tile)}")
+                            else:
+                                print(json.dumps({"error": "牌堆已空"}, ensure_ascii=False))
+                                break
+                            discarded_tile = game.discard_tile(current_player, len(current_player.hand) - 1)
+                            print(f"{current_player.name} 打出了 {str(discarded_tile)}")
+                            game.display_game_status()
+                            # 电脑出牌后暂停，等待玩家输入
+                            break
+                        else:
+                            game.display_game_status()
+                            break
         except json.JSONDecodeError:
             print(json.dumps({"error": "指令格式错误，请使用JSON格式"}, ensure_ascii=False))
         except Exception as e:
