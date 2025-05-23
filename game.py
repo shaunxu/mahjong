@@ -134,7 +134,20 @@ class Game:
                         }
                     return {"status": "error", "message": "无效的吃牌操作"}
                     
-                elif action in ["peng", "gang", "hu"]:
+                elif action == "peng":
+                    tile_indices = command.get("tile_index", [])
+                    if not isinstance(tile_indices, list):
+                        return {"status": "error", "message": "碰牌需要指定两张手牌的索引"}
+                    
+                    if self.check_peng(next_waiting_player, tile_indices):
+                        self.execute_peng(next_waiting_player, tile_indices)
+                        return {
+                            "status": "success",
+                            "message": f"{next_waiting_player.name}碰牌成功，请出牌",
+                            "game_state": self.get_game_state()
+                        }
+                    return {"status": "error", "message": "无效的碰牌操作"}
+                elif action in ["gang", "hu"]:
                     return {"status": "info", "message": f"{action}功能尚未实现"}
                 else:
                     return {"status": "error", "message": "只能选择 过、吃、碰、杠、胡"}
@@ -214,4 +227,45 @@ class Game:
         self.players_waiting_response.clear()
         
         # 设置当前玩家为吃牌的玩家
+        self.current_player_index = self.players.index(player)
+
+    def check_peng(self, player: Player, tiles_indices: List[int]) -> bool:
+        return True
+        # """检查碰牌操作是否合法"""
+        # # 检查数组长度
+        # if len(tiles_indices) != 2:
+        #     return False
+            
+        # # 确保索引有效
+        # if not all(0 <= idx < len(player.hand) for idx in tiles_indices):
+        #     return False
+            
+        # # 获取玩家选择的牌和上家打出的牌
+        # selected_tiles = [player.hand[idx] for idx in tiles_indices]
+        # discarded_tile = self.last_discarded_tile
+        
+        # # 所有牌必须相同
+        # return all(t.tile_type == discarded_tile.tile_type and 
+        #           t.number == discarded_tile.number 
+        #           for t in selected_tiles)
+
+    def execute_peng(self, player: Player, tiles_indices: List[int]):
+        """执行碰牌操作"""
+        # 获取选中的牌
+        selected_tiles = [player.hand[idx] for idx in sorted(tiles_indices, reverse=True)]
+        
+        # 从手牌中移除选中的牌
+        for idx in sorted(tiles_indices, reverse=True):
+            player.hand.pop(idx)
+            
+        # 添加副露
+        tiles = selected_tiles + [self.last_discarded_tile]
+        player.add_meld(MeldType.PENG, tiles)
+        
+        # 清理等待状态
+        self.waiting_player_index = None
+        self.last_discarded_tile = None
+        self.players_waiting_response.clear()
+        
+        # 设置当前玩家为碰牌的玩家
         self.current_player_index = self.players.index(player)
