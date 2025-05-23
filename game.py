@@ -13,22 +13,18 @@ class Game:
         self._initialize_game()
     
     def _initialize_players(self):
-        # Create 4 players with numbers
-        self.players = [
-            Player(f"玩家{i+1}")
-            for i in range(4)
-        ]
+        # Create 4 players with fixed wind positions
+        winds = [Seat.EAST, Seat.SOUTH, Seat.WEST, Seat.NORTH]
+        self.players = []
         
-        # Randomly assign winds to players, but ensure 玩家1 is East
-        winds = [Seat.SOUTH, Seat.WEST, Seat.NORTH]
-        random.shuffle(winds)
-        winds.insert(0, Seat.EAST)  # Place East wind at the beginning
-        
-        for player, wind in zip(self.players, winds):
+        for i, wind in enumerate(winds):
+            player = Player(f"玩家{i+1}")
             player.seat = wind
-            if wind == Seat.EAST:
-                self.current_player_index = self.players.index(player)
-    
+            self.players.append(player)
+            
+        # First player (East) starts the game
+        self.current_player_index = 0
+
     def _initialize_game(self):
         # Create and shuffle tiles
         self.tiles = create_tile_set()
