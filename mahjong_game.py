@@ -6,7 +6,7 @@ def format_tiles(tiles):
     return ", ".join(tile["display"] if isinstance(tile, dict) else str(tile) for tile in tiles)
 
 def format_melds(melds):
-    meld_types = {"chi": "吃", "peng": "碰", "gang": "杠"}
+    meld_types = {"chi": "吃", "peng": "碰", "hidden_gang": "暗杠", "open_gang": "明杠"}
     formatted = []
     for meld in melds:
         meld_type = meld_types.get(meld["type"], meld["type"])
@@ -45,6 +45,7 @@ def print_available_actions(game_state):
     else:
         print("1. 摸牌：{'action': 'draw'}")
         print("2. 打出：{'action': 'discard', 'tile_index': 数字}")
+        print("3. 暗杠：{'action': 'hidden_gang', 'tile_index': [数字1, 数字2, 数字3, 数字4]}")
 
 def main():
     parser = argparse.ArgumentParser(description="麻将游戏")

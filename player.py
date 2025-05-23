@@ -10,7 +10,8 @@ class Seat:
 class MeldType:
     CHI = "chi"    # 吃
     PENG = "peng"  # 碰
-    GANG = "gang"  # 杠
+    HIDDEN_GANG = "hidden_gang"  # 暗杠
+    OPEN_GANG = "open_gang"  # 明杠
 
 class Player:
     def __init__(self, name: str):

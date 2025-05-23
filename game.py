@@ -173,6 +173,20 @@ class Game:
                         }
                 return {"status": "error", "message": "无效的牌索引"}
             
+            elif action == "hidden_gang":
+                tile_indices = command.get("tile_index", [])
+                if not isinstance(tile_indices, list):
+                    return {"status": "error", "message": "暗杠需要指定四张手牌的索引"}
+                
+                if self.check_hidden_gang(current_player, tile_indices):
+                    self.execute_hidden_gang(current_player, tile_indices)
+                    return {
+                        "status": "success",
+                        "message": "暗杠成功，请继续操作",
+                        "game_state": self.get_game_state()
+                    }
+                return {"status": "error", "message": "无效的暗杠操作"}
+            
             return {"status": "error", "message": "无效的指令"}
         
         except json.JSONDecodeError:
@@ -269,3 +283,35 @@ class Game:
         
         # 设置当前玩家为碰牌的玩家
         self.current_player_index = self.players.index(player)
+
+    def check_hidden_gang(self, player: Player, tiles_indices: List[int]) -> bool:
+        return True
+        # """检查暗杠操作是否合法"""
+        # # 检查数组长度
+        # if len(tiles_indices) != 4:
+        #     return False
+            
+        # # 确保索引有效
+        # if not all(0 <= idx < len(player.hand) for idx in tiles_indices):
+        #     return False
+            
+        # # 获取玩家选择的牌
+        # selected_tiles = [player.hand[idx] for idx in tiles_indices]
+        # first_tile = selected_tiles[0]
+        
+        # # 所有牌必须相同
+        # return all(t.tile_type == first_tile.tile_type and 
+        #           t.number == first_tile.number 
+        #           for t in selected_tiles)
+
+    def execute_hidden_gang(self, player: Player, tiles_indices: List[int]):
+        """执行暗杠操作"""
+        # 获取选中的牌
+        selected_tiles = [player.hand[idx] for idx in sorted(tiles_indices, reverse=True)]
+        
+        # 从手牌中移除选中的牌
+        for idx in sorted(tiles_indices, reverse=True):
+            player.hand.pop(idx)
+            
+        # 添加暗杠到副露
+        player.add_meld(MeldType.HIDDEN_GANG, selected_tiles)
