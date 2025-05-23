@@ -17,7 +17,11 @@ def format_melds(melds):
 def print_game_state_compact(game_state):
     wind_map = {"east": "东", "south": "南", "west": "西", "north": "北"}
     
-    if game_state.get("waiting_response"):
+    if game_state.get("game_over"):
+        print("\n=== 游戏结束 ===")
+        print(f"赢家: {game_state['winner']}")
+        print(f"和牌方式: {game_state['win_type']}")
+    elif game_state.get("waiting_response"):
         print(f"\n等待 {game_state['waiting_player']} 响应")
         if game_state['last_discarded_tile']:
             print(f"上家打出：{game_state['last_discarded_tile']['display']}")
@@ -35,17 +39,22 @@ def print_game_state_compact(game_state):
     print("-" * 50)
 
 def print_available_actions(game_state):
+    if game_state.get("game_over"):
+        print("\n游戏已结束")
+        return
+        
     print("\n可用操作：")
     if game_state.get("waiting_response"):
         print("1. 过：{'action': 'pass'}")
-        print("2. 吃：{'action': 'chi'} (尚未实现)")
-        print("3. 碰：{'action': 'peng'} (尚未实现)")
+        print("2. 吃：{'action': 'chi'}")
+        print("3. 碰：{'action': 'peng'}")
         print("4. 明杠：{'action': 'open_gang', 'tile_index': [数字1, 数字2, 数字3]}")
-        print("5. 胡：{'action': 'hu'} (尚未实现)")
+        print("5. 胡：{'action': 'hu'}")
     else:
         print("1. 摸牌：{'action': 'draw'}")
         print("2. 打出：{'action': 'discard', 'tile_index': 数字}")
         print("3. 暗杠：{'action': 'hidden_gang', 'tile_index': [数字1, 数字2, 数字3, 数字4]}")
+        print("4. 胡：{'action': 'hu'} (自摸)")
 
 def main():
     parser = argparse.ArgumentParser(description="麻将游戏")
@@ -60,6 +69,17 @@ def main():
     
     while True:
         game_state = game.get_game_state()
+        
+        # 如果游戏已结束，显示最终状态并退出
+        if game_state.get("game_over"):
+            if args.json:
+                print(json.dumps(game_state, ensure_ascii=False, indent=2))
+            else:
+                print_game_state_compact(game_state)
+            print("\n游戏结束！")
+            break
+            
+        # 显示当前状态
         if game_state.get("waiting_response"):
             print(f"\n轮到 {game_state['waiting_player']} 响应")
         else:

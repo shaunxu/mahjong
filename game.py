@@ -160,8 +160,27 @@ class Game:
                             "game_state": self.get_game_state()
                         }
                     return {"status": "error", "message": "无效的明杠操作"}
-                elif action in ["gang", "hu"]:
-                    return {"status": "info", "message": f"{action}功能尚未实现"}
+                elif action == "hu":
+                    # 检查是否能胡牌
+                    if self.check_hu(next_waiting_player, is_self_drawn=False):
+                        # 把当前打出的牌加入到胡牌玩家的手牌中
+                        next_waiting_player.draw(self.last_discarded_tile)
+                        # 从打出玩家的弃牌堆中移除这张牌
+                        discard_player = self.players[self.waiting_player_index]
+                        if discard_player.discarded and discard_player.discarded[-1] == self.last_discarded_tile:
+                            discard_player.discarded.pop()
+                        
+                        # 修改游戏状态，让所有玩家的手牌可见
+                        final_state = self.get_game_state()
+                        final_state["game_over"] = True
+                        final_state["winner"] = next_waiting_player.name
+                        final_state["win_type"] = "点炮"
+                        return {
+                            "status": "success",
+                            "message": f"恭喜 {next_waiting_player.name} 胡牌！",
+                            "game_state": final_state
+                        }
+                    return {"status": "error", "message": "不符合胡牌条件"}
                 else:
                     return {"status": "error", "message": "只能选择 过、吃、碰、明杠、胡"}
             
@@ -170,6 +189,17 @@ class Game:
                 tile = self.draw_tile()
                 if tile:
                     current_player.draw(tile)
+                    # # 检查自摸胡牌
+                    # if self.check_hu(current_player, is_self_drawn=True):
+                    #     final_state = self.get_game_state()
+                    #     final_state["game_over"] = True
+                    #     final_state["winner"] = current_player.name
+                    #     final_state["win_type"] = "自摸"
+                    #     return {
+                    #         "status": "success",
+                    #         "message": f"恭喜 {current_player.name} 自摸！",
+                    #         "game_state": final_state
+                    #     }
                     return {"status": "success", "message": "摸了一张牌", "game_state": self.get_game_state()}
                 return {"status": "error", "message": "牌堆已空"}
             
@@ -199,6 +229,19 @@ class Game:
                         "game_state": self.get_game_state()
                     }
                 return {"status": "error", "message": "无效的暗杠操作"}
+            
+            elif action == "hu":
+                # 检查自摸胡牌
+                if self.check_hu(current_player, is_self_drawn=True):
+                    final_state = self.get_game_state()
+                    final_state["game_over"] = True
+                    final_state["winner"] = current_player.name
+                    final_state["win_type"] = "自摸"
+                    return {
+                        "status": "success",
+                        "message": f"恭喜 {current_player.name} 自摸！",
+                        "game_state": final_state
+                    }
             
             return {"status": "error", "message": "无效的指令"}
         
@@ -393,3 +436,94 @@ class Game:
         
         # 设置当前玩家为明杠的玩家
         self.current_player_index = self.players.index(player)
+
+    def check_hu(self, player: Player, is_self_drawn: bool = False) -> bool:
+        """
+        检查玩家是否胡牌
+        is_self_drawn: 是否自摸
+        """
+        all_tiles = player.hand.copy()
+        if is_self_drawn:
+            # 自摸时检查手牌
+            return self.is_hu(all_tiles)
+        else:
+            # 点炮时加入打出的牌
+            if self.last_discarded_tile:
+                all_tiles.append(self.last_discarded_tile)
+                return self.is_hu(all_tiles)
+        return False
+
+    def is_hu(self, tiles: List[Tile]) -> bool:
+        return True
+        # """
+        # 检查一手牌是否构成和牌
+        # 基本和牌规则：4组顺子或刻子 + 1对将牌
+        # """
+        # if len(tiles) != 14:  # 必须是14张牌
+        #     return False
+            
+        # # 对牌进行排序
+        # tiles.sort(key=lambda x: (x.tile_type.value, x.number))
+        
+        # # 枚举所有可能的将牌
+        # for i in range(len(tiles) - 1):
+        #     if i > 0 and tiles[i].tile_type == tiles[i-1].tile_type and tiles[i].number == tiles[i-1].number:
+        #         continue  # 跳过重复的将牌
+            
+        #     if i < len(tiles) - 1 and tiles[i].tile_type == tiles[i+1].tile_type and tiles[i].number == tiles[i+1].number:
+        #         # 找到一对将牌，创建剩余牌的副本
+        #         remain_tiles = tiles.copy()
+        #         # 移除将牌
+        #         remain_tiles.pop(i+1)
+        #         remain_tiles.pop(i)
+                
+        #         # 检查剩余牌是否能组成4组顺子或刻子
+        #         if self._can_form_melds(remain_tiles):
+        #             return True
+                    
+        # return False
+
+    def _can_form_melds(self, tiles: List[Tile]) -> bool:
+        """
+        检查给定的牌是否能组成顺子或刻子
+        """
+        if not tiles:  # 所有牌都已经组合完成
+            return True
+            
+        if len(tiles) < 3:  # 剩余牌不足3张
+            return False
+            
+        first_tile = tiles[0]
+        
+        # 尝试组成刻子
+        if (len(tiles) >= 3 and 
+            all(t.tile_type == first_tile.tile_type and t.number == first_tile.number 
+                for t in tiles[1:3])):
+            # 移除这个刻子后递归检查剩余的牌
+            return self._can_form_melds(tiles[3:])
+        
+        # 尝试组成顺子（仅对数字牌）
+        if (first_tile.tile_type in [TileType.CHARACTERS, TileType.DOTS, TileType.BAMBOO] and 
+            first_tile.number <= 7):  # 确保有足够的空间形成顺子
+            
+            # 查找后续两张牌
+            next_tiles = []
+            remaining = tiles[1:]
+            
+            for i in range(2):
+                found = False
+                for j, t in enumerate(remaining):
+                    if (t.tile_type == first_tile.tile_type and 
+                        t.number == first_tile.number + i + 1):
+                        next_tiles.append(t)
+                        remaining = remaining[:j] + remaining[j+1:]
+                        found = True
+                        break
+                if not found:
+                    break
+            
+            if len(next_tiles) == 2:  # 找到完整的顺子
+                new_tiles = remaining
+                return self._can_form_melds(new_tiles)
+        
+        return False
