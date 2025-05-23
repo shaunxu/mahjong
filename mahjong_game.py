@@ -5,6 +5,15 @@ from game import Game
 def format_tiles(tiles):
     return ", ".join(tile["display"] if isinstance(tile, dict) else str(tile) for tile in tiles)
 
+def format_melds(melds):
+    meld_types = {"chi": "吃", "peng": "碰", "gang": "杠"}
+    formatted = []
+    for meld in melds:
+        meld_type = meld_types.get(meld["type"], meld["type"])
+        tiles = format_tiles(meld["tiles"])
+        formatted.append(f"{meld_type}[{tiles}]")
+    return " ".join(formatted)
+
 def print_game_state_compact(game_state):
     wind_map = {"east": "东", "south": "南", "west": "西", "north": "北"}
     
@@ -21,6 +30,7 @@ def print_game_state_compact(game_state):
         name = player["name"]
         print(f"【{wind_char}】{name}")
         print(f"  手牌：{format_tiles(player['hand'])}")
+        print(f"  副露：{format_melds(player['melds'])}")
         print(f"  弃牌：{format_tiles(player['discarded'])}")
     print("-" * 50)
 
