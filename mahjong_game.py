@@ -40,7 +40,7 @@ def print_available_actions(game_state):
         print("1. 过：{'action': 'pass'}")
         print("2. 吃：{'action': 'chi'} (尚未实现)")
         print("3. 碰：{'action': 'peng'} (尚未实现)")
-        print("4. 杠：{'action': 'gang'} (尚未实现)")
+        print("4. 明杠：{'action': 'open_gang', 'tile_index': [数字1, 数字2, 数字3]}")
         print("5. 胡：{'action': 'hu'} (尚未实现)")
     else:
         print("1. 摸牌：{'action': 'draw'}")
