@@ -13,17 +13,17 @@ class Game:
         self._initialize_game()
     
     def _initialize_players(self):
-        # Create 3 computer players and 1 human player
+        # Create 4 players with numbers
         self.players = [
-            Player("computer 1"),
-            Player("computer 2"),
-            Player("computer 3"),
-            Player("human", is_human=True)
+            Player(f"玩家{i+1}")
+            for i in range(4)
         ]
         
-        # Randomly assign winds to players
-        winds = [Seat.EAST, Seat.SOUTH, Seat.WEST, Seat.NORTH]
+        # Randomly assign winds to players, but ensure 玩家1 is East
+        winds = [Seat.SOUTH, Seat.WEST, Seat.NORTH]
         random.shuffle(winds)
+        winds.insert(0, Seat.EAST)  # Place East wind at the beginning
+        
         for player, wind in zip(self.players, winds):
             player.seat = wind
             if wind == Seat.EAST:
@@ -54,11 +54,7 @@ class Game:
         return {
             "remaining_tiles": len(self.tiles),
             "current_player": current_player.name,
-            "players": [
-                # Only show hand for human player
-                p.to_dict(show_hand=p.is_human)
-                for p in self.players
-            ]
+            "players": [p.to_dict() for p in self.players]
         }
     
     def handle_command(self, command_str: str) -> Dict:
@@ -71,27 +67,27 @@ class Game:
                 tile = self.draw_tile()
                 if tile:
                     self.get_current_player().draw(tile)
-                    return {"status": "success", "message": "Drew a tile", "game_state": self.get_game_state()}
-                return {"status": "error", "message": "No tiles left"}
+                    return {"status": "success", "message": "摸了一张牌", "game_state": self.get_game_state()}
+                return {"status": "error", "message": "牌堆已空"}
             
             elif action == "discard":
                 if tile_index is not None:
                     tile = self.get_current_player().discard(tile_index)
                     if tile:
                         self.next_player()
-                        return {"status": "success", "message": f"Discarded {str(tile)}", "game_state": self.get_game_state()}
-                return {"status": "error", "message": "Invalid tile index"}
+                        return {"status": "success", "message": f"打出 {str(tile)}", "game_state": self.get_game_state()}
+                return {"status": "error", "message": "无效的牌索引"}
             
             elif action in ["chi", "peng", "gang", "hu"]:
-                return {"status": "info", "message": f"{action} not implemented yet"}
+                return {"status": "info", "message": f"{action}功能尚未实现"}
             
             elif action == "pass":
                 self.next_player()
-                return {"status": "success", "message": "Passed", "game_state": self.get_game_state()}
+                return {"status": "success", "message": "过", "game_state": self.get_game_state()}
             
-            return {"status": "error", "message": "Invalid command"}
+            return {"status": "error", "message": "无效的指令"}
         
         except json.JSONDecodeError:
-            return {"status": "error", "message": "Invalid JSON format"}
+            return {"status": "error", "message": "无效的JSON格式"}
         except Exception as e:
             return {"status": "error", "message": str(e)}

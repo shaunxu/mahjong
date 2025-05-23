@@ -16,12 +16,13 @@ class Tile:
     
     def __str__(self) -> str:
         if self.tile_type in [TileType.CHARACTERS, TileType.DOTS, TileType.BAMBOO]:
-            return f"{self.number}{self.tile_type.value}"
+            nums = ["一", "二", "三", "四", "五", "六", "七", "八", "九"]
+            return f"{nums[self.number - 1]}{self.tile_type.value}"
         elif self.tile_type == TileType.WIND:
             winds = ["东", "南", "西", "北"]
             return f"{winds[self.number-1]}风"
         else:  # Dragon
-            dragons = ["中", "发", "白"]
+            dragons = ["红中", "发财", "白板"]
             return f"{dragons[self.number-1]}"
     
     def to_dict(self) -> dict:

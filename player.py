@@ -8,9 +8,8 @@ class Seat:
     NORTH = "north"
 
 class Player:
-    def __init__(self, name: str, is_human: bool = False):
+    def __init__(self, name: str):
         self.name = name
-        self.is_human = is_human
         self.hand: List[Tile] = []
         self.discarded: List[Tile] = []
         self.seat: str = ""
@@ -25,11 +24,10 @@ class Player:
             return tile
         return None
     
-    def to_dict(self, show_hand: bool = False) -> dict:
+    def to_dict(self) -> dict:
         return {
             "name": self.name,
-            "is_human": self.is_human,
             "seat": self.seat,
-            "hand": [t.to_dict() for t in self.hand] if show_hand else len(self.hand),
+            "hand": [t.to_dict() for t in self.hand],
             "discarded": [t.to_dict() for t in self.discarded]
         }
