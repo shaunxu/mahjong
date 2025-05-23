@@ -1,8 +1,8 @@
 import json
 from typing import List, Optional, Dict
 import random
-from tile import Tile, create_tile_set
-from player import Player, Seat
+from tile import Tile, create_tile_set, TileType
+from player import Player, Seat, MeldType
 
 class Game:
     def __init__(self):
@@ -120,7 +120,21 @@ class Game:
                         "message": "所有玩家均过",
                         "game_state": self.get_game_state()
                     }
-                elif action in ["chi", "peng", "gang", "hu"]:
+                elif action == "chi":
+                    tile_indices = command.get("tile_index", [])
+                    if not isinstance(tile_indices, list):
+                        return {"status": "error", "message": "吃牌需要指定两张手牌的索引"}
+                    
+                    if self.check_chi(next_waiting_player, tile_indices):
+                        self.execute_chi(next_waiting_player, tile_indices)
+                        return {
+                            "status": "success",
+                            "message": f"{next_waiting_player.name}吃牌成功，请出牌",
+                            "game_state": self.get_game_state()
+                        }
+                    return {"status": "error", "message": "无效的吃牌操作"}
+                    
+                elif action in ["peng", "gang", "hu"]:
                     return {"status": "info", "message": f"{action}功能尚未实现"}
                 else:
                     return {"status": "error", "message": "只能选择 过、吃、碰、杠、胡"}
@@ -152,3 +166,52 @@ class Game:
             return {"status": "error", "message": "无效的JSON格式"}
         except Exception as e:
             return {"status": "error", "message": str(e)}
+
+    def check_chi(self, player: Player, tiles_indices: List[int]) -> bool:
+        return True
+        # """检查吃牌操作是否合法"""
+        # # 检查数组长度
+        # if len(tiles_indices) != 2:
+        #     return False
+            
+        # # 确保索引有效
+        # if not all(0 <= idx < len(player.hand) for idx in tiles_indices):
+        #     return False
+            
+        # # 获取玩家选择的牌和上家打出的牌
+        # selected_tiles = [player.hand[idx] for idx in tiles_indices]
+        # discarded_tile = self.last_discarded_tile
+        
+        # # 所有牌必须是同一种花色的数牌
+        # all_tiles = selected_tiles + [discarded_tile]
+        # tile_type = discarded_tile.tile_type
+        # if not all(t.tile_type == tile_type for t in all_tiles) or \
+        #    tile_type not in [TileType.CHARACTERS, TileType.DOTS, TileType.BAMBOO]:
+        #     return False
+            
+        # # 获取所有数字并排序
+        # numbers = sorted([t.number for t in all_tiles])
+        
+        # # 检查是否构成顺子
+        # return numbers[1] == numbers[0] + 1 and numbers[2] == numbers[1] + 1
+        
+    def execute_chi(self, player: Player, tiles_indices: List[int]):
+        """执行吃牌操作"""
+        # 获取选中的牌
+        selected_tiles = [player.hand[idx] for idx in sorted(tiles_indices, reverse=True)]
+        
+        # 从手牌中移除选中的牌
+        for idx in sorted(tiles_indices, reverse=True):
+            player.hand.pop(idx)
+            
+        # 添加副露
+        tiles = selected_tiles + [self.last_discarded_tile]
+        player.add_meld(MeldType.CHI, sorted(tiles, key=lambda x: x.number))
+        
+        # 清理等待状态
+        self.waiting_player_index = None
+        self.last_discarded_tile = None
+        self.players_waiting_response.clear()
+        
+        # 设置当前玩家为吃牌的玩家
+        self.current_player_index = self.players.index(player)
