@@ -70,14 +70,14 @@ def main():
     while True:
         game_state = game.get_game_state()
         
-        # 如果游戏已结束，显示最终状态并退出
-        if game_state.get("game_over"):
-            if args.json:
-                print(json.dumps(game_state, ensure_ascii=False, indent=2))
-            else:
-                print_game_state_compact(game_state)
-            print("\n游戏结束！")
-            break
+        # # 如果游戏已结束，显示最终状态并退出
+        # if game_state.get("game_over"):
+        #     if args.json:
+        #         print(json.dumps(game_state, ensure_ascii=False, indent=2))
+        #     else:
+        #         print_game_state_compact(game_state)
+        #     print("\n游戏结束！")
+        #     break
             
         # 显示当前状态
         if game_state.get("waiting_response"):
@@ -97,6 +97,10 @@ def main():
                 print_game_state_compact(result["game_state"])
             else:
                 print(f"\n错误：{result['message']}")
+        
+        # 如果游戏已结束，退出
+        if result["game_state"]["game_over"]:
+            break
 
 if __name__ == "__main__":
     main()
