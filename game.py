@@ -240,18 +240,26 @@ class Game:
         # 获取选中的牌
         selected_tiles = [player.hand[idx] for idx in sorted(tiles_indices, reverse=True)]
         
+        # 保存上家打出的牌和打出这张牌的玩家
+        discarded_tile = self.last_discarded_tile
+        discard_player = self.players[self.waiting_player_index]
+        
         # 从手牌中移除选中的牌
         for idx in sorted(tiles_indices, reverse=True):
             player.hand.pop(idx)
             
-        # 添加副露
-        tiles = selected_tiles + [self.last_discarded_tile]
-        player.add_meld(MeldType.CHI, sorted(tiles, key=lambda x: x.number))
+        # 从上家的弃牌列表中移除这张牌
+        if discard_player.discarded and discard_player.discarded[-1] == discarded_tile:
+            discard_player.discarded.pop()
         
         # 清理等待状态
         self.waiting_player_index = None
         self.last_discarded_tile = None
         self.players_waiting_response.clear()
+        
+        # 添加副露
+        tiles = selected_tiles + [discarded_tile]
+        player.add_meld(MeldType.CHI, sorted(tiles, key=lambda x: x.number))
         
         # 设置当前玩家为吃牌的玩家
         self.current_player_index = self.players.index(player)
@@ -281,18 +289,26 @@ class Game:
         # 获取选中的牌
         selected_tiles = [player.hand[idx] for idx in sorted(tiles_indices, reverse=True)]
         
+        # 保存上家打出的牌和打出这张牌的玩家
+        discarded_tile = self.last_discarded_tile
+        discard_player = self.players[self.waiting_player_index]
+        
         # 从手牌中移除选中的牌
         for idx in sorted(tiles_indices, reverse=True):
             player.hand.pop(idx)
             
-        # 添加副露
-        tiles = selected_tiles + [self.last_discarded_tile]
-        player.add_meld(MeldType.PENG, tiles)
+        # 从上家的弃牌列表中移除这张牌
+        if discard_player.discarded and discard_player.discarded[-1] == discarded_tile:
+            discard_player.discarded.pop()
         
         # 清理等待状态
         self.waiting_player_index = None
         self.last_discarded_tile = None
         self.players_waiting_response.clear()
+        
+        # 添加副露
+        tiles = selected_tiles + [discarded_tile]
+        player.add_meld(MeldType.PENG, tiles)
         
         # 设置当前玩家为碰牌的玩家
         self.current_player_index = self.players.index(player)
@@ -354,18 +370,26 @@ class Game:
         # 获取选中的牌
         selected_tiles = [player.hand[idx] for idx in sorted(tiles_indices, reverse=True)]
         
+        # 保存上家打出的牌和打出这张牌的玩家
+        discarded_tile = self.last_discarded_tile
+        discard_player = self.players[self.waiting_player_index]
+        
         # 从手牌中移除选中的牌
         for idx in sorted(tiles_indices, reverse=True):
             player.hand.pop(idx)
             
-        # 添加明杠到副露，包含上家打出的牌
-        tiles = selected_tiles + [self.last_discarded_tile]
-        player.add_meld(MeldType.OPEN_GANG, tiles)
+        # 从上家的弃牌列表中移除这张牌
+        if discard_player.discarded and discard_player.discarded[-1] == discarded_tile:
+            discard_player.discarded.pop()
         
         # 清理等待状态
         self.waiting_player_index = None
         self.last_discarded_tile = None
         self.players_waiting_response.clear()
+        
+        # 添加明杠到副露，包含上家打出的牌
+        tiles = selected_tiles + [discarded_tile]
+        player.add_meld(MeldType.OPEN_GANG, tiles)
         
         # 设置当前玩家为明杠的玩家
         self.current_player_index = self.players.index(player)
